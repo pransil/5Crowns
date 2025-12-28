@@ -87,30 +87,14 @@ class GameUI:
     @staticmethod
     def ask_go_out(player: Player, wild_rank: str) -> bool:
         """Ask if player wants to try to go out"""
-        # First check if it's possible
-        can_go_out, melds = MeldFinder.can_go_out(player.hand, wild_rank)
-
-        if can_go_out:
-            print("\n*** You can go out! ***")
-            GameUI.display_melds(melds, wild_rank)
-
-            while True:
-                choice = input("Go out with these melds? (y/n) ").strip().lower()
-                if choice == 'y':
-                    return True
-                elif choice == 'n':
-                    return False
-                else:
-                    print("Please enter 'y' or 'n'")
-        else:
-            # Show best possible melds
-            melds, remaining_points = MeldFinder.find_best_meld_combination(player.hand, wild_rank)
-
-            if melds:
-                print(f"\nBest melds found (leaving {remaining_points} points):")
-                GameUI.display_melds(melds, wild_rank)
-
-        return False
+        while True:
+            choice = input("\nDo you want to try to go out? (y/n) ").strip().lower()
+            if choice == 'y':
+                return True
+            elif choice == 'n':
+                return False
+            else:
+                print("Please enter 'y' or 'n'")
 
     @staticmethod
     def display_melds(melds: List[List[Card]], wild_rank: str):

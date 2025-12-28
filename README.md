@@ -51,7 +51,7 @@ The game features:
 - **Interactive CLI gameplay** - play against 1-3 computer opponents
 - **Smart AI opponents** - AI evaluates card usefulness and makes strategic decisions
 - **11 rounds** - complete game from round 1 (3s wild) through round 11 (Ks wild)
-- **Automatic meld detection** - the game will show you when you can go out
+- **Player-controlled melds** - you arrange your own melds with optional suggestions
 - **Score tracking** - lowest score wins after all rounds
 
 ## Usage for Library/Validation
