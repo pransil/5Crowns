@@ -3,7 +3,7 @@ Tests for Five Crowns Meld Validation
 """
 
 import unittest
-from five_crowns import Card, Suit, MeldValidator, ValidationResult, create_card
+from five_crowns import Card, Suit, MeldValidator, ValidationResult, create_card, create_joker
 
 
 class TestWildCardRounds(unittest.TestCase):
@@ -384,6 +384,186 @@ class TestRealGameScenarios(unittest.TestCase):
         
         # But in round 4, 5 is not wild
         self.assertFalse(MeldValidator.is_valid_book(cards, '6'))
+
+
+class TestJokerCards(unittest.TestCase):
+    """Test joker cards as wild cards"""
+    
+    def test_joker_creation(self):
+        """Test that jokers can be created"""
+        joker = create_joker()
+        self.assertEqual(joker.rank, 'Joker')
+        self.assertEqual(joker.suit, Suit.JOKER)
+        self.assertEqual(str(joker), 'Joker')
+    
+    def test_joker_is_always_wild(self):
+        """Jokers should be wild regardless of round"""
+        joker = create_joker()
+        # Jokers are wild in any round
+        self.assertTrue(MeldValidator.is_wild(joker, '3'))
+        self.assertTrue(MeldValidator.is_wild(joker, '5'))
+        self.assertTrue(MeldValidator.is_wild(joker, 'K'))
+    
+    def test_book_with_joker(self):
+        """Book with a joker as wild card"""
+        cards = [
+            create_card('7', 'H'),
+            create_card('7', 'S'),
+            create_joker()  # Joker as wild
+        ]
+        self.assertTrue(MeldValidator.is_valid_book(cards, '3'))
+    
+    def test_book_with_joker_and_round_wild(self):
+        """Book with both joker and round wild card"""
+        cards = [
+            create_card('9', 'H'),
+            create_joker(),  # Joker
+            create_card('5', 'S')  # Round 3 wild (5s are wild)
+        ]
+        self.assertTrue(MeldValidator.is_valid_book(cards, '5'))
+    
+    def test_book_multiple_jokers(self):
+        """Book with multiple jokers"""
+        cards = [
+            create_card('8', 'H'),
+            create_joker(),
+            create_joker()
+        ]
+        self.assertTrue(MeldValidator.is_valid_book(cards, '3'))
+    
+    def test_book_all_jokers_invalid(self):
+        """All jokers - invalid (need at least one real card)"""
+        cards = [
+            create_joker(),
+            create_joker(),
+            create_joker()
+        ]
+        self.assertFalse(MeldValidator.is_valid_book(cards, '3'))
+    
+    def test_run_with_joker_filling_gap(self):
+        """Run with joker filling a gap"""
+        cards = [
+            create_card('5', 'H'),
+            create_joker(),  # Filling the 6 spot
+            create_card('7', 'H')
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_run_with_joker_at_end(self):
+        """Run with joker extending the end"""
+        cards = [
+            create_card('5', 'D'),
+            create_card('6', 'D'),
+            create_joker()  # Representing 7
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_run_with_joker_at_start(self):
+        """Run with joker extending the beginning"""
+        cards = [
+            create_joker(),  # Representing 4
+            create_card('5', 'C'),
+            create_card('6', 'C')
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_run_with_multiple_jokers(self):
+        """Run with multiple jokers filling gaps"""
+        cards = [
+            create_card('5', 'H'),
+            create_joker(),  # 6
+            create_joker(),  # 7
+            create_card('8', 'H')
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_run_joker_and_round_wild(self):
+        """Run with both joker and round wild card"""
+        cards = [
+            create_card('4', 'D'),
+            create_joker(),  # 5
+            create_card('6', 'D'),
+            create_card('7', 'D')  # Round 5 wild (7s are wild)
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '7'))
+    
+    def test_run_all_jokers_invalid(self):
+        """All jokers - invalid (need at least one real card)"""
+        cards = [
+            create_joker(),
+            create_joker(),
+            create_joker()
+        ]
+        self.assertFalse(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_joker_in_complex_meld(self):
+        """Joker in a complex multi-meld hand"""
+        melds = [
+            # Book of 10s with joker
+            [
+                create_card('10', 'H'),
+                create_card('10', 'S'),
+                create_joker()
+            ],
+            # Run 6-7-8-9 with joker filling gap
+            [
+                create_card('6', 'C'),
+                create_joker(),  # 7
+                create_card('8', 'C'),
+                create_card('9', 'C')
+            ]
+        ]
+        result = MeldValidator.validate_all_melds(melds, '3')
+        self.assertTrue(result.is_valid)
+    
+    def test_joker_suit_doesnt_matter_in_run(self):
+        """Joker suit doesn't matter in runs (they're wild)"""
+        # Joker can have any suit, but it's still wild
+        cards = [
+            create_card('5', 'H'),
+            create_card('Joker', 'D'),  # Joker with diamond suit (doesn't matter)
+            create_card('7', 'H')
+        ]
+        # This should work - joker is wild regardless of suit
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_joker_suit_doesnt_matter_in_book(self):
+        """Joker suit doesn't matter in books (they're wild)"""
+        cards = [
+            create_card('8', 'H'),
+            create_card('8', 'S'),
+            create_card('Joker', 'C')  # Joker with club suit (doesn't matter)
+        ]
+        self.assertTrue(MeldValidator.is_valid_book(cards, '3'))
+    
+    def test_joker_with_face_cards(self):
+        """Joker in run with face cards"""
+        cards = [
+            create_card('10', 'H'),
+            create_joker(),  # J
+            create_card('Q', 'H'),
+            create_card('K', 'H')
+        ]
+        self.assertTrue(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_joker_extending_high_end(self):
+        """Joker extending beyond K should be invalid"""
+        cards = [
+            create_card('J', 'H'),
+            create_card('Q', 'H'),
+            create_card('K', 'H'),
+            create_joker()  # Can't extend beyond K
+        ]
+        self.assertFalse(MeldValidator.is_valid_run(cards, '3'))
+    
+    def test_joker_extending_low_end(self):
+        """Joker extending below 3 should be invalid"""
+        cards = [
+            create_joker(),  # Can't extend below 3
+            create_card('3', 'H'),
+            create_card('4', 'H')
+        ]
+        self.assertFalse(MeldValidator.is_valid_run(cards, '3'))
 
 
 if __name__ == '__main__':

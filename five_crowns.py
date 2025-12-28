@@ -13,14 +13,17 @@ class Suit(Enum):
     CLUBS = "♣"
     DIAMONDS = "♦"
     STARS = "★"  # Five Crowns has 5 suits
+    JOKER = "🃏"  # Joker suit (jokers are always wild)
 
 
 @dataclass
 class Card:
-    rank: str  # '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'
+    rank: str  # '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'Joker'
     suit: Suit
     
     def __repr__(self):
+        if self.rank == 'Joker':
+            return "Joker"
         return f"{self.rank}{self.suit.value}"
     
     def __eq__(self, other):
@@ -182,19 +185,39 @@ class MeldValidator:
         highest_rank_value = MeldValidator.RANK_VALUES[sorted_cards[-1].rank]
         
         # We can't extend below rank 0 (which is '3') or above rank 10 (which is 'K')
-        if lowest_rank_value - remaining_wilds < 0:
-            # Too many wilds to place at the beginning
-            # They must fit at the end
-            wilds_at_start = lowest_rank_value
-            wilds_at_end = remaining_wilds - wilds_at_start
-            if highest_rank_value + wilds_at_end > 10:
+        # Check if sequence is at boundaries (considering both wild and non-wild cards)
+        has_rank_k = any(c.rank == 'K' for c in cards)
+        # Check if we have a 3 that's being used (either as non-wild or as wild representing 3)
+        has_rank_3_as_start = False
+        if lowest_rank_value == 0:  # Non-wild 3 is the lowest
+            has_rank_3_as_start = True
+        elif wild_rank == '3':  # 3s are wild this round
+            # Check if we have a wild 3 that would be at the start of the sequence
+            # This is tricky - we need to see if a wild 3 is being used at position 0
+            # For simplicity, if we have any 3 in cards and it's wild, and lowest non-wild is 4,
+            # then the sequence effectively starts at 3
+            if any(c.rank == '3' for c in cards) and lowest_rank_value == 1:  # 4 is at position 1
+                has_rank_3_as_start = True
+        
+        # If we have remaining wilds, check if they can be placed within bounds
+        if remaining_wilds > 0:
+            # Calculate how many wilds can be placed at each end
+            # Can't extend below position 0 (rank '3')
+            max_wilds_at_start = lowest_rank_value
+            # Can't extend above position 10 (rank 'K')
+            max_wilds_at_end = 10 - highest_rank_value
+            
+            # Stricter rule: if sequence is at a boundary, we can't add wilds at all
+            # This prevents extending sequences that are already at the limits
+            if has_rank_k and highest_rank_value == 10:  # Sequence ends at K
+                # Can't add wilds - would extend beyond K
                 return False
-        elif highest_rank_value + remaining_wilds > 10:
-            # Too many wilds to place at the end
-            # They must fit at the beginning
-            wilds_at_end = 10 - highest_rank_value
-            wilds_at_start = remaining_wilds - wilds_at_end
-            if lowest_rank_value - wilds_at_start < 0:
+            if has_rank_3_as_start:  # Sequence effectively starts at 3
+                # Can't add wilds - would extend below 3
+                return False
+            
+            # For sequences not at boundaries, check if we can place all remaining wilds
+            if remaining_wilds > max_wilds_at_start + max_wilds_at_end:
                 return False
         
         return True
@@ -207,6 +230,12 @@ def create_card(rank: str, suit: str) -> Card:
         'H': Suit.HEARTS,
         'C': Suit.CLUBS,
         'D': Suit.DIAMONDS,
-        'T': Suit.STARS
+        'T': Suit.STARS,
+        'J': Suit.JOKER  # For jokers, though create_joker() is preferred
     }
     return Card(rank, suit_map[suit])
+
+
+def create_joker() -> Card:
+    """Helper to create a joker card (always wild)"""
+    return Card('Joker', Suit.JOKER)
